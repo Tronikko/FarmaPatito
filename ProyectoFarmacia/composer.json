@@ -1,0 +1,17 @@
+{
+    "name": "paco/proyecto-farmacia",
+    "autoload": {
+        "psr-4": {
+            "Paco\\ProyectoFarmacia\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Tronikko",
+            "email": "frank2705@hotmail.com"
+        }
+    ],
+    "require": {
+        "phpmailer/phpmailer": "*"
+    }
+}
