@@ -4,49 +4,48 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $mensaje = "";
+$servidor = "127.0.0.1";
+$usuario_db = "root";
+$contrasena_db = "1234"; 
+$bd = "Loggin";
+$puerto = 3306;
 
-// Datos de conexión a Azure SQL Database
-$servidor = "tcp:farmapatito.database.windows.net,1433";
-$usuario_db = "paco";
-$contrasena_db = "199627Fggv27";
-$bd = "Farmapatito";
+$conn = new mysqli($servidor, $usuario_db, $contrasena_db, $bd, $puerto);
 
-try {
-    // Configuración segura con PDO
-    $conn = new PDO("sqlsrv:server=$servidor;Database=$bd;Encrypt=true;TrustServerCertificate=false", $usuario_db, $contrasena_db);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "✅ Conexión exitosa a Azure SQL Database";
-} catch (PDOException $e) {
-    die("❌ Error de conexión: " . $e->getMessage());
+if ($conn->connect_error) {
+    die("❌ Error de conexión a la BD: " . $conn->connect_error);
 }
 
-// Validar login
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["login"])) {
     $usuario = trim($_POST["usuario"]);
     $contrasena = trim($_POST["contrasena"]);
+    $fecha_hora = date("Y-m-d H:i:s");
 
     // 🔹 Verificar si el usuario existe en la BD
-    $sql = "SELECT tipo, contrasena FROM usuarios WHERE usuario = :usuario";
+    $sql = "SELECT tipo, contrasena FROM usuarios WHERE usuario = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bindValue(":usuario", $usuario);
+    $stmt->bind_param("s", $usuario);
     $stmt->execute();
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $resultado = $stmt->get_result();
 
-    if (!$row) {
+    if ($resultado->num_rows === 0) {
         // Usuario no encontrado
         $mensaje = "❌ Usuario no registrado.";
-    } elseif ($contrasena !== $row['contrasena']) {
-        // Contraseña incorrecta
-        $mensaje = "❌ Contraseña incorrecta.";
+        $operacion = "fallido (usuario no existe)";
     } else {
-        // Usuario válido, iniciar sesión
-        $_SESSION['usuario'] = $usuario;
-        $_SESSION['admin'] = ($row['tipo'] === 'admin');
+        $row = $resultado->fetch_assoc();
 
-        $mensaje = "✅ Login exitoso.";
-    }
-}
+        // Validación: Contraseña incorrecta
+        if ($contrasena !== $row['contrasena']) {
+            $mensaje = "❌ Contraseña incorrecta.";
+            $operacion = "fallido (contraseña incorrecta)";
+        } else {
+            // Usuario válido, iniciar sesión
+            $_SESSION['usuario'] = $usuario;
+            $_SESSION['admin'] = ($row['tipo'] === 'admin');
 
+            $mensaje = "✅ Login exitoso.";
+            $operacion = "exitoso";
 
             // Registrar en bitácora y redirigir
             $bitacora_sql = "INSERT INTO bitacora (usuario, fecha_hora, operacion) VALUES (?, ?, ?)";
