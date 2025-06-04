@@ -12,44 +12,41 @@ $contrasena_db = "199627Fggv27";
 $bd = "Farmapatito";
 
 try {
-    // Configuración segura con PDO para SQL Server
+    // Configuración segura con PDO
     $conn = new PDO("sqlsrv:server=$servidor;Database=$bd;Encrypt=true;TrustServerCertificate=false", $usuario_db, $contrasena_db);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     echo "✅ Conexión exitosa a Azure SQL Database";
 } catch (PDOException $e) {
-    echo "❌ Error de conexión: " . $e->getMessage();
+    die("❌ Error de conexión: " . $e->getMessage());
 }
 
+// Validar login
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["login"])) {
     $usuario = trim($_POST["usuario"]);
     $contrasena = trim($_POST["contrasena"]);
-    $fecha_hora = date("Y-m-d H:i:s");
 
     // 🔹 Verificar si el usuario existe en la BD
-    $sql = "SELECT tipo, contrasena FROM usuarios WHERE usuario = ?";
+    $sql = "SELECT tipo, contrasena FROM usuarios WHERE usuario = :usuario";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $usuario);
+    $stmt->bindValue(":usuario", $usuario);
     $stmt->execute();
-    $resultado = $stmt->get_result();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($resultado->num_rows === 0) {
+    if (!$row) {
         // Usuario no encontrado
         $mensaje = "❌ Usuario no registrado.";
-        $operacion = "fallido (usuario no existe)";
+    } elseif ($contrasena !== $row['contrasena']) {
+        // Contraseña incorrecta
+        $mensaje = "❌ Contraseña incorrecta.";
     } else {
-        $row = $resultado->fetch_assoc();
+        // Usuario válido, iniciar sesión
+        $_SESSION['usuario'] = $usuario;
+        $_SESSION['admin'] = ($row['tipo'] === 'admin');
 
-        // Validación: Contraseña incorrecta
-        if ($contrasena !== $row['contrasena']) {
-            $mensaje = "❌ Contraseña incorrecta.";
-            $operacion = "fallido (contraseña incorrecta)";
-        } else {
-            // Usuario válido, iniciar sesión
-            $_SESSION['usuario'] = $usuario;
-            $_SESSION['admin'] = ($row['tipo'] === 'admin');
+        $mensaje = "✅ Login exitoso.";
+    }
+}
 
-            $mensaje = "✅ Login exitoso.";
-            $operacion = "exitoso";
 
             // Registrar en bitácora y redirigir
             $bitacora_sql = "INSERT INTO bitacora (usuario, fecha_hora, operacion) VALUES (?, ?, ?)";
