@@ -4,16 +4,20 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $mensaje = "";
-$servidor = "127.0.0.1";
-$usuario_db = "root";
-$contrasena_db = "1234"; 
-$bd = "Loggin";
-$puerto = 3306;
 
-$conn = new mysqli($servidor, $usuario_db, $contrasena_db, $bd, $puerto);
+// Datos de conexión a Azure SQL Database
+$servidor = "tcp:farmapatito.database.windows.net,1433";
+$usuario_db = "paco";
+$contrasena_db = "199627Fggv27";
+$bd = "Farmapatito";
 
-if ($conn->connect_error) {
-    die("❌ Error de conexión a la BD: " . $conn->connect_error);
+try {
+    // Configuración segura con PDO para SQL Server
+    $conn = new PDO("sqlsrv:server=$servidor;Database=$bd;Encrypt=true;TrustServerCertificate=false", $usuario_db, $contrasena_db);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "✅ Conexión exitosa a Azure SQL Database";
+} catch (PDOException $e) {
+    echo "❌ Error de conexión: " . $e->getMessage();
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["login"])) {
